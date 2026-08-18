@@ -7,6 +7,8 @@ on:
       cluster_profile: {required: true, type: string}
       tests_json: {required: true, type: string}
       remote_root: {required: true, type: string}
+      ssh_port: {required: false, type: string, default: '22'}
+      ssh_known_hosts: {required: true, type: string}
     secrets:
       REMOTE_USER: {required: true}
       REMOTE_SSH_PRIVATE_KEY: {required: true}
@@ -30,12 +32,16 @@ jobs:
           EXPECTED_SHA: '${{ inputs.source_sha }}'
           EXPECTED_PROFILE: '${{ inputs.cluster_profile }}'
           EXPECTED_REMOTE_ROOT: '${{ inputs.remote_root }}'
+          EXPECTED_PORT: '${{ inputs.ssh_port }}'
+          EXPECTED_KNOWN_HOSTS: '${{ inputs.ssh_known_hosts }}'
         run: |
           set -euo pipefail
           [[ "$EXPECTED_REMOTE_ROOT" =~ ^~\/[A-Za-z0-9_./~-]+$ && "$EXPECTED_REMOTE_ROOT" != *..* ]] || { echo 'remote_root must be a safe path below ~/' >&2; exit 2; }
           [[ "$EXPECTED_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo 'invalid source_repository' >&2; exit 2; }
           [[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'invalid source_sha' >&2; exit 2; }
           [[ "$EXPECTED_PROFILE" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo 'invalid cluster_profile' >&2; exit 2; }
+          [[ "$EXPECTED_PORT" =~ ^[0-9]+$ && "$EXPECTED_PORT" -ge 1 && "$EXPECTED_PORT" -le 65535 ]] || { echo 'invalid ssh_port' >&2; exit 2; }
+          test -n "$EXPECTED_KNOWN_HOSTS"
           printf '%s' "$TESTS_JSON" > plan.json
           python3 sai-hpc-ci/controller/validate_plan.py plan.json --output validated.json \
             --expected-repository "$EXPECTED_REPOSITORY" \
@@ -48,14 +54,15 @@ jobs:
           REMOTE_ROOT: '${{ inputs.remote_root }}'
           PROFILE: '${{ inputs.cluster_profile }}'
           SAI_HOST: '${{ vars.SAI_HOST }}'
-          SAI_SSH_KNOWN_HOSTS: '${{ vars.SAI_SSH_KNOWN_HOSTS }}'
+          SAI_PORT: '${{ inputs.ssh_port }}'
+          SAI_SSH_KNOWN_HOSTS: '${{ inputs.ssh_known_hosts }}'
         run: |
           set -euo pipefail
           umask 077
           printf '%s\n' "$REMOTE_SSH_PRIVATE_KEY" > key
           test -n "$SAI_SSH_KNOWN_HOSTS"
           printf '%s\n' "$SAI_SSH_KNOWN_HOSTS" > known_hosts
-          ssh_opts=(-i key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=known_hosts)
+          ssh_opts=(-i key -p "$SAI_PORT" -o StrictHostKeyChecking=yes -o UserKnownHostsFile=known_hosts)
           mkdir -p bundle
           cp validated.json sai-hpc-ci/remote/run_array_task.py sai-hpc-ci/remote/task.sbatch sai-hpc-ci/remote/submit_array.sh sai-hpc-ci/remote/wait_jobs.sh bundle/
           cp "sai-hpc-ci/profiles/$PROFILE.env" bundle/profile.env
