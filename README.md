@@ -4,12 +4,12 @@ Reusable, declarative remote GPU/HPC CI for multi-node Slurm clusters.
 
 The controller owns the host-side execution boundary: modules, Slurm, Apptainer, MPI launch, bind mounts, cleanup, and result collection. A caller supplies a repository SHA and a validated list of container-internal commands. Project SSH credentials are supplied by the caller at workflow runtime; this repository does not store project keys.
 
-Pin the reusable workflow to a reviewed commit (current controller release: `79919193a8722d4a42c2cd6a905a884afb6a0bc7`):
+Pin the reusable workflow to a reviewed commit (current controller release: `1e38126`):
 
 ```yaml
 jobs:
   gpu:
-    uses: AI4SAI/sai-hpc-ci/.github/workflows/hpc-test.yml@79919193a8722d4a42c2cd6a905a884afb6a0bc7
+    uses: AI4SAI/sai-hpc-ci/.github/workflows/hpc-test.yml@1e38126
     with:
       source_repository: ${{ github.repository }}
       source_sha: ${{ github.sha }}
