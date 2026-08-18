@@ -1,0 +1,67 @@
+name: sai-hpc-ci
+on:
+  workflow_call:
+    inputs:
+      source_repository: {required: true, type: string}
+      source_sha: {required: true, type: string}
+      cluster_profile: {required: true, type: string}
+      tests_json: {required: true, type: string}
+      remote_root: {required: true, type: string}
+    secrets:
+      REMOTE_USER: {required: true}
+      REMOTE_SSH_PRIVATE_KEY: {required: true}
+permissions: {contents: read, checks: write}
+jobs:
+  validate-and-submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: sai-hpc-ci, persist-credentials: false}
+      - name: Validate request
+        env:
+          TESTS_JSON: '${{ inputs.tests_json }}'
+          EXPECTED_REPOSITORY: '${{ inputs.source_repository }}'
+          EXPECTED_SHA: '${{ inputs.source_sha }}'
+          EXPECTED_PROFILE: '${{ inputs.cluster_profile }}'
+          EXPECTED_REMOTE_ROOT: '${{ inputs.remote_root }}'
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_REMOTE_ROOT" =~ ^[A-Za-z0-9_./~-]+$ ]] || { echo 'invalid remote_root' >&2; exit 2; }
+          [[ "$EXPECTED_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo 'invalid source_repository' >&2; exit 2; }
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'invalid source_sha' >&2; exit 2; }
+          [[ "$EXPECTED_PROFILE" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo 'invalid cluster_profile' >&2; exit 2; }
+          printf '%s' "$TESTS_JSON" > plan.json
+          python3 sai-hpc-ci/controller/validate_plan.py plan.json --output validated.json \
+            --expected-repository "$EXPECTED_REPOSITORY" \
+            --expected-sha "$EXPECTED_SHA" \
+            --expected-profile "$EXPECTED_PROFILE"
+      - name: Submit trusted remote array
+        env:
+          REMOTE_USER: '${{ secrets.REMOTE_USER }}'
+          REMOTE_SSH_PRIVATE_KEY: '${{ secrets.REMOTE_SSH_PRIVATE_KEY }}'
+          REMOTE_ROOT: '${{ inputs.remote_root }}'
+          PROFILE: '${{ inputs.cluster_profile }}'
+          SAI_HOST: '${{ vars.SAI_HOST }}'
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$REMOTE_SSH_PRIVATE_KEY" > key
+          mkdir -p bundle
+          cp validated.json sai-hpc-ci/remote/run_array_task.py sai-hpc-ci/remote/task.sbatch sai-hpc-ci/remote/submit_array.sh sai-hpc-ci/remote/wait_jobs.sh bundle/
+          cp "sai-hpc-ci/profiles/$PROFILE.env" bundle/profile.env
+          ssh -i key -o StrictHostKeyChecking=yes "$REMOTE_USER@$SAI_HOST" "mkdir -p '$REMOTE_ROOT'"
+          scp -q -i key -o StrictHostKeyChecking=yes -r bundle "$REMOTE_USER@$SAI_HOST:$REMOTE_ROOT/"
+          mapfile -t jobs < <(ssh -i key -o StrictHostKeyChecking=yes "$REMOTE_USER@$SAI_HOST" \
+            "cd '$REMOTE_ROOT/bundle' && PROFILE_FILE=profile.env PLAN_FILE=validated.json REMOTE_ROOT='$REMOTE_ROOT' CONTROLLER_ROOT='$REMOTE_ROOT/bundle' SLURM_SCRIPT=task.sbatch bash submit_array.sh" | grep -E '^[0-9]+(_[0-9]+)?$')
+          ((${#jobs[@]} > 0))
+          printf -v job_args ' %q' "${jobs[@]}"
+          ssh -i key -o StrictHostKeyChecking=yes "$REMOTE_USER@$SAI_HOST" "bash '$REMOTE_ROOT/bundle/wait_jobs.sh'$job_args"
+          mkdir -p results
+          scp -q -i key -o StrictHostKeyChecking=yes -r "$REMOTE_USER@$SAI_HOST:$REMOTE_ROOT/results/." results/
+          tar -czf sai-hpc-ci-results.tar.gz results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sai-hpc-ci-results
+          path: sai-hpc-ci-results.tar.gz
+          if-no-files-found: warn

@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+plan.json
+validated.json
+key
+bundle/
+results/
