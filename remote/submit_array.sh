@@ -5,6 +5,7 @@ set -euo pipefail
 : "${REMOTE_ROOT:?task root required}"
 : "${CONTROLLER_ROOT:?trusted controller root required}"
 source "${PROFILE_FILE}"
+source "${MODULE_INIT}"
 module purge
 for module_name in ${MODULES}; do module load "${module_name}"; done
 python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); [print(i,t["nodes"],t["gpus_per_node"],t["ranks_per_node"],t["timeout_minutes"]) for i,t in enumerate(p["tests"]) ]' "${PLAN_FILE}" | while read -r index nodes gpus ranks timeout; do
