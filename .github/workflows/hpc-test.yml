@@ -9,13 +9,15 @@ on:
       remote_root: {required: true, type: string}
       ssh_port: {required: false, type: string, default: '22'}
       ssh_known_hosts: {required: true, type: string}
+      secret_environment: {required: true, type: string}
     secrets:
-      REMOTE_USER: {required: true}
-      REMOTE_SSH_PRIVATE_KEY: {required: true}
+      REMOTE_USER: {required: false}
+      REMOTE_SSH_PRIVATE_KEY: {required: false}
 permissions: {contents: read, checks: write}
 jobs:
   validate-and-submit:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.secret_environment }}
     steps:
       - uses: actions/checkout@v4
         with:
