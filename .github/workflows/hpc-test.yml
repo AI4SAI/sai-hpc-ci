@@ -65,6 +65,9 @@ jobs:
           test -n "$SAI_SSH_KNOWN_HOSTS"
           printf '%s\n' "$SAI_SSH_KNOWN_HOSTS" > known_hosts
           ssh_opts=(-i key -p "$SAI_PORT" -o StrictHostKeyChecking=yes -o UserKnownHostsFile=known_hosts)
+          remote_suffix="${REMOTE_ROOT#~/}"
+          REMOTE_ROOT=$(ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "printf '%s/%s' \"\$HOME\" '$remote_suffix'")
+          export REMOTE_ROOT
           mkdir -p bundle
           cp validated.json sai-hpc-ci/remote/run_array_task.py sai-hpc-ci/remote/task.sbatch sai-hpc-ci/remote/submit_array.sh sai-hpc-ci/remote/wait_jobs.sh bundle/
           cp "sai-hpc-ci/profiles/$PROFILE.env" bundle/profile.env
