@@ -18,7 +18,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: AI4SAI/sai-hpc-ci
-          ref: '${{ github.workflow_sha }}'
+          # Keep this equal to the commit that contains this workflow.
+          # A release update must change both the caller pin and this ref.
+          ref: cb25bc2
           path: sai-hpc-ci
           persist-credentials: false
       - name: Validate request
