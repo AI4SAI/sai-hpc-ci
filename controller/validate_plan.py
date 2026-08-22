@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse, json, posixpath, re, sys
 from pathlib import PurePosixPath
 
-PROFILES = {"sai-cuda12-openmpi5": {"max_nodes": 2, "max_gpus_per_node": 8, "max_ranks_per_node": 8, "max_timeout_minutes": 300}}
+PROFILES = {"sai-cuda12-openmpi5": {"partition": "16V100", "max_nodes": 2, "max_gpus_per_node": 8, "max_ranks_per_node": 8, "max_timeout_minutes": 300}}
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 def fail(message): raise ValueError(message)
@@ -18,6 +18,10 @@ def command(value, field):
     # therefore data, not host-side syntax. NUL is the only impossible argv byte.
     if any("\x00" in x for x in value): fail(f"{field} contains NUL")
     return value
+def default_qos(gpus):
+    if gpus in (1, 2): return "flood-1o2gpu"
+    if gpus >= 4 and gpus % 4 == 0: return "flood-gpu"
+    fail(f"gpus_per_node={gpus} is not a standard configuration; allowed defaults are 1/2 -> flood-1o2gpu and 4/8 -> flood-gpu. Set explicit qos for an exceptional GPU count")
 def validate(raw):
     if not isinstance(raw, dict) or raw.get("version") != 1: fail("plan version must be 1")
     profile_name = raw.get("cluster_profile")
@@ -36,9 +40,12 @@ def validate(raw):
         if not isinstance(name, str) or not NAME_RE.fullmatch(name) or name in names: fail(f"tests[{i}].name is invalid or duplicated")
         names.add(name)
         values = {k: item.get(k, d) for k, d in (("nodes", 1), ("gpus_per_node", 1), ("ranks_per_node", 1), ("timeout_minutes", 60))}
+        explicit_qos = item.get("qos")
+        if explicit_qos is not None and (not isinstance(explicit_qos, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", explicit_qos)):
+            fail(f"tests[{i}].qos must be a Slurm QoS name")
         for field, value, limit in (("nodes", values["nodes"], limits["max_nodes"]), ("gpus_per_node", values["gpus_per_node"], limits["max_gpus_per_node"]), ("ranks_per_node", values["ranks_per_node"], limits["max_ranks_per_node"]), ("timeout_minutes", values["timeout_minutes"], limits["max_timeout_minutes"])):
             if not isinstance(value, int) or value < 1 or value > limit: fail(f"tests[{i}].{field} exceeds profile limits")
-        output["tests"].append({**values, "name": name, "working_directory": relative_path(item.get("working_directory", "."), f"tests[{i}].working_directory"), "command": command(item.get("command"), f"tests[{i}].command")})
+        output["tests"].append({**values, "name": name, "qos": explicit_qos or default_qos(values["gpus_per_node"]), "partition": limits["partition"], "working_directory": relative_path(item.get("working_directory", "."), f"tests[{i}].working_directory"), "command": command(item.get("command"), f"tests[{i}].command")})
     return output
 def main():
     p = argparse.ArgumentParser(); p.add_argument("plan"); p.add_argument("--output", required=True); p.add_argument("--expected-repository"); p.add_argument("--expected-sha"); p.add_argument("--expected-profile"); args = p.parse_args()

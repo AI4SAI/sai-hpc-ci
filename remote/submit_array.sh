@@ -12,6 +12,11 @@ export CMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-}"
 source "${MODULE_INIT}"
 module purge
 for module_name in ${MODULES}; do module load "${module_name}"; done
-python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); [print(i,t["nodes"],t["gpus_per_node"],t["ranks_per_node"],t["timeout_minutes"]) for i,t in enumerate(p["tests"]) ]' "${PLAN_FILE}" | while read -r index nodes gpus ranks timeout; do
-  sbatch --parsable --array="${index}" --nodes="${nodes}" --ntasks="$((nodes * ranks))" --gpus="$((nodes * gpus))" --ntasks-per-node="${ranks}" --time="${timeout}" --partition="${PARTITION}" --qos="${QOS}" --export=ALL,PLAN_FILE,PROFILE_FILE,REMOTE_ROOT,CONTROLLER_ROOT "${SLURM_SCRIPT:?trusted sbatch script required}"
+python3 - "${PLAN_FILE}" <<'PY'
+import json, os, subprocess, sys
+plan = json.load(open(sys.argv[1], encoding="utf-8"))
+for index, task in enumerate(plan["tests"]):
+    command = ["sbatch", "--parsable", f"--array={index}", f"--nodes={task['nodes']}", f"--ntasks={task['nodes'] * task['ranks_per_node']}", f"--gpus={task['nodes'] * task['gpus_per_node']}", f"--ntasks-per-node={task['ranks_per_node']}", f"--time={task['timeout_minutes']}", f"--partition={task['partition']}", f"--qos={task['qos']}", "--export=ALL,PLAN_FILE,PROFILE_FILE,REMOTE_ROOT,CONTROLLER_ROOT", os.environ["SLURM_SCRIPT"]]
+    print(subprocess.check_output(command, text=True).strip())
+PY
 done
