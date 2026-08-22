@@ -20,4 +20,3 @@ for index, task in enumerate(plan["tests"]):
     command = ["sbatch", "--parsable", f"--array={index}", f"--nodes={task['nodes']}", f"--ntasks={task['nodes'] * task['ranks_per_node']}", f"--gpus={task['nodes'] * task['gpus_per_node']}", f"--ntasks-per-node={task['ranks_per_node']}", f"--time={task['timeout_minutes']}", f"--partition={task['partition']}", f"--qos={task['qos']}", "--export=ALL,PLAN_FILE,PROFILE_FILE,REMOTE_ROOT,CONTROLLER_ROOT", os.environ["SLURM_SCRIPT"]]
     print(subprocess.check_output(command, text=True).strip())
 PY
-done
