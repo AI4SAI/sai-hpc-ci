@@ -12,6 +12,7 @@ export CMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-}"
 source "${MODULE_INIT}"
 module purge
 for module_name in ${MODULES}; do module load "${module_name}"; done
+export PLAN_FILE PROFILE_FILE REMOTE_ROOT CONTROLLER_ROOT SLURM_SCRIPT
 python3 - "${PLAN_FILE}" <<'PY'
 import json, os, subprocess, sys
 plan = json.load(open(sys.argv[1], encoding="utf-8"))
