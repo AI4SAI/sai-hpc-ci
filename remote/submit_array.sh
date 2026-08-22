@@ -12,11 +12,10 @@ export CMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-}"
 source "${MODULE_INIT}"
 module purge
 for module_name in ${MODULES}; do module load "${module_name}"; done
-export PLAN_FILE PROFILE_FILE REMOTE_ROOT CONTROLLER_ROOT SLURM_SCRIPT
 python3 - "${PLAN_FILE}" <<'PY'
 import json, os, subprocess, sys
 plan = json.load(open(sys.argv[1], encoding="utf-8"))
 for index, task in enumerate(plan["tests"]):
-    command = ["sbatch", "--parsable", f"--array={index}", f"--nodes={task['nodes']}", f"--ntasks={task['nodes'] * task['ranks_per_node']}", f"--gpus-per-node={task['gpus_per_node']}", f"--ntasks-per-node={task['ranks_per_node']}", f"--time={task['timeout_minutes']}", f"--partition={task['partition']}", f"--qos={task['qos']}", "--export=ALL,PLAN_FILE,PROFILE_FILE,REMOTE_ROOT,CONTROLLER_ROOT", os.environ["SLURM_SCRIPT"]]
+    command = ["sbatch", "--parsable", f"--array={index}", f"--nodes={task['nodes']}", f"--ntasks={task['nodes'] * task['ranks_per_node']}", f"--gpus-per-node={task['gpus_per_node']}", f"--ntasks-per-node={task['ranks_per_node']}", f"--time={task['timeout_minutes']}", f"--partition={task['partition']}", f"--qos={task['qos']}", "--export=NIL", os.environ["SLURM_SCRIPT"], os.path.abspath(os.environ["PLAN_FILE"]), os.path.abspath(os.environ["PROFILE_FILE"]), os.environ["REMOTE_ROOT"], os.environ["CONTROLLER_ROOT"]]
     print(subprocess.check_output(command, text=True).strip())
 PY
