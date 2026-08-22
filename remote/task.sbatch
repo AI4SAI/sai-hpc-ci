@@ -20,4 +20,10 @@ export CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH:-}
 source "$MODULE_INIT"
 module purge
 for module_name in $MODULES; do module load "$module_name"; done
+MPS_MAPPING_FILE="$MPS_MAPPING_ROOT/${SLURM_JOB_PARTITION}.bash"
+test -r "$MPS_MAPPING_FILE"
+source "$MPS_MAPPING_FILE"
+export SLURM_EXPORT_ENV=ALL
+export OMPI_MCA_plm_slurm_args=--external-launcher
+export PRTE_MCA_plm_slurm_args=--external-launcher
 exec python3 "${CONTROLLER_ROOT}/run_array_task.py"
