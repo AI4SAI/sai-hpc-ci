@@ -90,6 +90,7 @@ jobs:
           ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "bash '$REMOTE_ROOT/bundle/wait_jobs.sh'$job_args"
           mkdir -p results
           scp -q "${scp_opts[@]}" -r "$REMOTE_USER@$SAI_HOST:$REMOTE_ROOT/results/." results/
+          scp -q "${scp_opts[@]}" -r "$REMOTE_USER@$SAI_HOST:$REMOTE_ROOT/diagnostics/." results/diagnostics/ || true
           tar -czf sai-hpc-ci-results.tar.gz results
       - uses: actions/upload-artifact@v4
         if: always()
