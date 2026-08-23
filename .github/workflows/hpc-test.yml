@@ -75,7 +75,7 @@ jobs:
           printf '%s\n' "$SAI_SSH_KNOWN_HOSTS" > known_hosts
           ssh_opts=(-i key -p "$SAI_PORT" -o StrictHostKeyChecking=yes -o UserKnownHostsFile=known_hosts)
           scp_opts=(-i key -P "$SAI_PORT" -o StrictHostKeyChecking=yes -o UserKnownHostsFile=known_hosts)
-          remote_suffix="${REMOTE_ROOT#~/}"
+          remote_suffix="${REMOTE_ROOT##*~/}"
           REMOTE_ROOT=$(ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "printf '%s/%s' \"\$HOME\" '$remote_suffix'")
           export REMOTE_ROOT
           mkdir -p bundle
