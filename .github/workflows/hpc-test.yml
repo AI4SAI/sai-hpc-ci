@@ -24,7 +24,7 @@ jobs:
           repository: AI4SAI/sai-hpc-ci
           # Keep this equal to the commit that contains this workflow.
           # A release update must change both the caller pin and this ref.
-          ref: b1a4e2756907afa20418cfec314177d967fe5d8e
+          ref: f22c1b9e070e4c39e9033b1953636d5f7c8d2fea
           path: sai-hpc-ci
           persist-credentials: false
       - name: Checkout source archive
