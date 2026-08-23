@@ -13,7 +13,19 @@ DIAGNOSTIC_DIR="$REMOTE_ROOT/diagnostics/${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID:-
 mkdir -p "$DIAGNOSTIC_DIR"
 exec > >(tee -a "$DIAGNOSTIC_DIR/batch.log") 2>&1
 diag() { "$@" >> "$DIAGNOSTIC_DIR/commands.log" 2>&1 || true; }
-printf 'job=%s array=%s node=%s user=%s\n' "$SLURM_JOB_ID" "${SLURM_ARRAY_TASK_ID:-0}" "$(hostname)" "${SLURM_JOB_USER:-}" 
+export HOME=$(getent passwd "$SLURM_JOB_USER" | cut -d: -f6)
+export USER=$SLURM_JOB_USER LOGNAME=$SLURM_JOB_USER
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+source "$PROFILE_FILE"
+export ROOTFS="$REMOTE_ROOT/rootfs"
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}
+export LD_PRELOAD=${LD_PRELOAD:-}
+export CPATH=${CPATH:-}
+export CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH:-}
+source "$MODULE_INIT"
+module purge
+for module_name in $MODULES; do module load "$module_name"; done
 diag id
 diag env
 diag bash -c 'printf "partition=%s qos=%s account=%s tres=%s gres=%s\\n" "$SLURM_JOB_PARTITION" "$SLURM_JOB_QOS" "$SLURM_JOB_ACCOUNT" "$SLURM_JOB_TRES_PER_NODE" "$SLURM_JOB_GRES"'
@@ -23,19 +35,6 @@ diag bash -c 'module -t list'
 diag apptainer --version
 diag nvidia-smi -L
 diag srun --version
-export HOME=$(getent passwd "$SLURM_JOB_USER" | cut -d: -f6)
-export USER=$SLURM_JOB_USER LOGNAME=$SLURM_JOB_USER
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-source "$PROFILE_FILE"
-ROOTFS="$REMOTE_ROOT/rootfs"
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}
-export LD_PRELOAD=${LD_PRELOAD:-}
-export CPATH=${CPATH:-}
-export CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH:-}
-source "$MODULE_INIT"
-module purge
-for module_name in $MODULES; do module load "$module_name"; done
 MPS_MAPPING_FILE="$MPS_MAPPING_ROOT/${SLURM_JOB_PARTITION}.bash"
 test -r "$MPS_MAPPING_FILE"
 source "$MPS_MAPPING_FILE"
