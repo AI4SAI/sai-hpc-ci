@@ -16,6 +16,6 @@ python3 - "${PLAN_FILE}" <<'PY'
 import json, os, subprocess, sys
 plan = json.load(open(sys.argv[1], encoding="utf-8"))
 for index, task in enumerate(plan["tests"]):
-    command = ["sbatch", "--parsable", f"--array={index}", f"--nodes={task['nodes']}", f"--ntasks={task['nodes'] * task['ranks_per_node']}", f"--gpus-per-node={task['gpus_per_node']}", f"--ntasks-per-node={task['ranks_per_node']}", f"--time={task['timeout_minutes']}", f"--partition={task['partition']}", f"--qos={task['qos']}", "--export=NIL", os.environ["SLURM_SCRIPT"], os.path.abspath(os.environ["PLAN_FILE"]), os.path.abspath(os.environ["PROFILE_FILE"]), os.environ["REMOTE_ROOT"], os.environ["CONTROLLER_ROOT"]]
+    command = ["sbatch", "--parsable", f"--array={index}", f"--nodes={task['nodes']}", f"--ntasks={task['nodes'] * task['ranks_per_node']}", f"--gpus-per-node={task['gpus_per_node']}", f"--ntasks-per-node={task['ranks_per_node']}", f"--time={task['timeout_minutes']}", f"--partition={task['partition']}", f"--qos={task['qos']}", "--export=NIL", os.environ["SLURM_SCRIPT"], os.path.abspath(os.environ["PLAN_FILE"]), os.path.abspath(os.environ["PROFILE_FILE"]), os.environ["REMOTE_ROOT"], os.environ["CONTROLLER_ROOT"], os.path.join(os.path.dirname(os.path.abspath(os.environ["PLAN_FILE"])), "source.tar.gz")]
     print(subprocess.check_output(command, text=True).strip())
 PY

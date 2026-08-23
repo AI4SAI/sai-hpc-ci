@@ -7,7 +7,8 @@ set -euo pipefail
 : "${2:?profile path required}"
 : "${3:?remote root required}"
 : "${4:?controller root required}"
-export PLAN_FILE=$1 PROFILE_FILE=$2 REMOTE_ROOT=$3 CONTROLLER_ROOT=$4
+: "${5:?source archive required}"
+export PLAN_FILE=$1 PROFILE_FILE=$2 REMOTE_ROOT=$3 CONTROLLER_ROOT=$4 SOURCE_ARCHIVE=$5
 export HOME=$(getent passwd "$SLURM_JOB_USER" | cut -d: -f6)
 export USER=$SLURM_JOB_USER LOGNAME=$SLURM_JOB_USER
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

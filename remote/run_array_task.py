@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 """Trusted Slurm array entrypoint; the project command runs only in Apptainer."""
 import json, os, pathlib, shutil, stat, subprocess, sys
+import tarfile
+
+def extract_source(archive, destination):
+    with tarfile.open(archive, "r:gz") as tar:
+        members = tar.getmembers()
+        if len(members) > 100000:
+            raise ValueError("source archive has too many members")
+        for member in members:
+            path = pathlib.PurePosixPath(member.name)
+            if path.is_absolute() or ".." in path.parts or member.issym() or member.islnk():
+                raise ValueError("unsafe source archive member")
+        tar.extractall(destination, filter="data")
 
 def main():
     plan = json.load(open(os.environ["PLAN_FILE"], encoding="utf-8"))
@@ -11,9 +23,7 @@ def main():
     source, build, scratch_results, tmp = root / "source", root / "build", root / "results", root / "tmp"
     for path in (source, build, scratch_results, tmp, final_results): path.mkdir(parents=True, exist_ok=True)
     try:
-        subprocess.run(["git", "clone", "--no-checkout", "--depth=1", f"https://github.com/{plan['source']['repository']}.git", str(source)], check=True)
-        subprocess.run(["git", "-C", str(source), "fetch", "--depth=1", "origin", plan["source"]["sha"]], check=True)
-        subprocess.run(["git", "-C", str(source), "checkout", "--detach", plan["source"]["sha"]], check=True)
+        extract_source(os.environ["SOURCE_ARCHIVE"], source)
         profile = {}
         for line in open(os.environ["PROFILE_FILE"], encoding="utf-8"):
             if "=" in line and not line.lstrip().startswith("#"):

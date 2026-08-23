@@ -27,6 +27,14 @@ jobs:
           ref: ed03867835c9f02892227ab0356dc5e41d94d468
           path: sai-hpc-ci
           persist-credentials: false
+      - name: Checkout source archive
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.source_repository }}
+          ref: ${{ inputs.source_sha }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
       - name: Validate request
         env:
           TESTS_JSON: '${{ inputs.tests_json }}'
@@ -49,6 +57,7 @@ jobs:
             --expected-repository "$EXPECTED_REPOSITORY" \
             --expected-sha "$EXPECTED_SHA" \
             --expected-profile "$EXPECTED_PROFILE"
+          tar --exclude=.git --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -czf source.tar.gz -C source .
       - name: Submit trusted remote array
         env:
           REMOTE_USER: '${{ secrets.REMOTE_USER }}'
@@ -70,7 +79,7 @@ jobs:
           REMOTE_ROOT=$(ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "printf '%s/%s' \"\$HOME\" '$remote_suffix'")
           export REMOTE_ROOT
           mkdir -p bundle
-          cp validated.json sai-hpc-ci/remote/run_array_task.py sai-hpc-ci/remote/task.sbatch sai-hpc-ci/remote/submit_array.sh sai-hpc-ci/remote/wait_jobs.sh bundle/
+          cp validated.json source.tar.gz sai-hpc-ci/remote/run_array_task.py sai-hpc-ci/remote/task.sbatch sai-hpc-ci/remote/submit_array.sh sai-hpc-ci/remote/wait_jobs.sh bundle/
           cp "sai-hpc-ci/profiles/$PROFILE.env" bundle/profile.env
           ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "mkdir -p '$REMOTE_ROOT'"
           scp -q "${scp_opts[@]}" -r bundle "$REMOTE_USER@$SAI_HOST:$REMOTE_ROOT/"
