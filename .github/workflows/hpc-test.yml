@@ -79,10 +79,11 @@ jobs:
           REMOTE_ROOT=$(ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "printf '%s/%s' \"\$HOME\" '$remote_suffix'")
           export REMOTE_ROOT
           mkdir -p bundle
-          cp validated.json source.tar.gz sai-hpc-ci/remote/run_array_task.py sai-hpc-ci/remote/task.sbatch sai-hpc-ci/remote/submit_array.sh sai-hpc-ci/remote/wait_jobs.sh bundle/
+          cp validated.json source.tar.gz sai-hpc-ci/remote/create_rootfs.sh sai-hpc-ci/remote/run_array_task.py sai-hpc-ci/remote/task.sbatch sai-hpc-ci/remote/submit_array.sh sai-hpc-ci/remote/wait_jobs.sh bundle/
           cp "sai-hpc-ci/profiles/$PROFILE.env" bundle/profile.env
           ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "mkdir -p '$REMOTE_ROOT'"
           scp -q "${scp_opts[@]}" -r bundle "$REMOTE_USER@$SAI_HOST:$REMOTE_ROOT/"
+          ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" "bash '$REMOTE_ROOT/bundle/create_rootfs.sh' '$REMOTE_ROOT/rootfs'"
           mapfile -t jobs < <(ssh "${ssh_opts[@]}" "$REMOTE_USER@$SAI_HOST" \
             "cd '$REMOTE_ROOT/bundle' && PROFILE_FILE=profile.env PLAN_FILE=validated.json REMOTE_ROOT='$REMOTE_ROOT' CONTROLLER_ROOT='$REMOTE_ROOT/bundle' SLURM_SCRIPT=task.sbatch bash submit_array.sh" | grep -E '^[0-9]+(_[0-9]+)?$')
           ((${#jobs[@]} > 0))

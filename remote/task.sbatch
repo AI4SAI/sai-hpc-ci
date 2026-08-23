@@ -28,6 +28,7 @@ export USER=$SLURM_JOB_USER LOGNAME=$SLURM_JOB_USER
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 source "$PROFILE_FILE"
+ROOTFS="$REMOTE_ROOT/rootfs"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}
 export LD_PRELOAD=${LD_PRELOAD:-}
 export CPATH=${CPATH:-}

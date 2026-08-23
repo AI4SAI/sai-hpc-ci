@@ -30,7 +30,7 @@ def main():
                 key, value = line.strip().split("=", 1); profile[key] = value.strip('"')
         env = os.environ.copy()
         env.update({"HOME": "/tmp", "SOURCE_DATE_EPOCH": "0"})
-        image = profile["ROOTFS"]
+        image = os.environ.get("ROOTFS", profile["ROOTFS"])
         workdir = pathlib.PurePosixPath("/workspace/source") / task["working_directory"]
         container_cmd = ["apptainer", "exec", "--cleanenv", "--containall", "--no-home", "--bind", f"{source}:/workspace/source:ro", "--bind", f"{build}:/workspace/build:rw", "--bind", f"{scratch_results}:/workspace/results:rw", "--bind", f"{tmp}:/tmp:rw", "--bind", "/opt:/opt:ro", "--bind", "/usr:/usr:ro", "--bind", "/lib:/lib:ro", "--bind", "/lib64:/lib64:ro", "--bind", f"{profile['MPI_ROOT']}:{profile['MPI_ROOT']}:ro", image, "/bin/sh", "-c", "cd \"$1\" && shift && exec \"$@\"", "sh", str(workdir), *task["command"]]
         launch = ["mpirun", "-np", str(task["nodes"] * task["ranks_per_node"]), "--map-by", os.environ["MAP_OPT"]]
