@@ -28,11 +28,12 @@ def main():
         for line in open(os.environ["PROFILE_FILE"], encoding="utf-8"):
             if "=" in line and not line.lstrip().startswith("#"):
                 key, value = line.strip().split("=", 1); profile[key] = value.strip('"')
-        env = {"PATH": "/usr/bin:/bin", "HOME": "/tmp", "SOURCE_DATE_EPOCH": "0"}
+        env = os.environ.copy()
+        env.update({"HOME": "/tmp", "SOURCE_DATE_EPOCH": "0"})
         image = profile["ROOTFS"]
         workdir = pathlib.PurePosixPath("/workspace/source") / task["working_directory"]
         container_cmd = ["apptainer", "exec", "--cleanenv", "--containall", "--no-home", "--bind", f"{source}:/workspace/source:ro", "--bind", f"{build}:/workspace/build:rw", "--bind", f"{scratch_results}:/workspace/results:rw", "--bind", f"{tmp}:/tmp:rw", "--bind", "/opt:/opt:ro", "--bind", "/usr:/usr:ro", "--bind", "/lib:/lib:ro", "--bind", "/lib64:/lib64:ro", "--bind", f"{profile['MPI_ROOT']}:{profile['MPI_ROOT']}:ro", image, "/bin/sh", "-c", "cd \"$1\" && shift && exec \"$@\"", "sh", str(workdir), *task["command"]]
-        launch = ["srun", "--nodes", str(task["nodes"]), "--ntasks-per-node", str(task["ranks_per_node"]), "--exact"]
+        launch = ["mpirun", "-np", str(task["nodes"] * task["ranks_per_node"]), "--map-by", os.environ["MAP_OPT"]]
         with open(final_results / "stdout.log", "wb") as log:
             completed = subprocess.run(launch + container_cmd, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=task["timeout_minutes"] * 60)
         for candidate in scratch_results.rglob("*"):
